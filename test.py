@@ -1,64 +1,100 @@
+import numpy as np
+import cv2 as cv
+import glob
 import os
-import customtkinter as ctk
-import cv2
-from PIL import Image, ImageTk
+import yaml 
+class CameraCalibration:
+    def __init__(self, chessboardSize, imageFolderPath, useFisheye=False):
+        self.chessboardSize = chessboardSize
+        self.imageFolderPath = imageFolderPath
+        self.useFisheye = useFisheye
+        self.objpoints = []  # 3d point in real-world space
+        self.imgpoints = []  # 2d points in image plane.
+        self.cameraMatrix = None
+        self.dist = None
+        self.rvecs = None
+        self.tvecs = None
+    def findChessboardCorners(self):
+        criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        objp = np.zeros((self.chessboardSize[0] * self.chessboardSize[1], 3), np.float32)
+        objp[:,:2] = np.mgrid[0:self.chessboardSize[0],0:self.chessboardSize[1]].T.reshape(-1,2)
+        size_of_chessboard_squares_mm = 20
+        objp = objp * size_of_chessboard_squares_mm
 
-class ImageViewerApp(ctk.CTk):
-    def __init__(self, folder_path):
-        super().__init__()
+        images = glob.glob(self.imageFolderPath + '/*.png')
 
-        self.title("Image Viewer")
-        self.geometry("1000x600")
+        for image in images:
+            if image:
+                img = cv.imread(image)
+                gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+                ret, corners = cv.findChessboardCorners(gray, self.chessboardSize, None)
 
-        self.load_and_display_images(folder_path)
+                if ret == True:
+                    self.objpoints.append(objp)
+                    corners2 = cv.cornerSubPix(gray, corners, (11,11), (-1,-1), criteria)
+                    self.imgpoints.append(corners)
 
-    def load_images_from_folder(self, folder_path):
-        image_files = [f for f in os.listdir(folder_path) if f.endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
-        return image_files
+                    # Draw and save the corners in a results folder
+                    cv.drawChessboardCorners(img, self.chessboardSize, corners2, ret)
+                    result_folder = os.path.join(os.path.dirname(self.imageFolderPath), "results")
+                    os.makedirs(result_folder, exist_ok=True)
+                    result_path = os.path.join(result_folder, os.path.basename(image))
+                    cv.imwrite(result_path, img)
 
-    def display_large_image(self, img_path):
-        img = cv2.imread(img_path)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = Image.fromarray(img)
-        img = img.resize((int(img.size[0] // 2.5), int(img.size[1] // 2.5)))  # Resize to the desired size
-        img = ImageTk.PhotoImage(img)
-        self.large_img_label.configure(image=img)
-        self.large_img_label.image = img
+    def calibrateCamera(self, frameSize):
+        if self.useFisheye:
+            ret, self.cameraMatrix, self.dist, self.rvecs, self.tvecs = cv.fisheye.calibrate(
+                self.objpoints, self.imgpoints, frameSize, None, None)
+        else:
+            ret, self.cameraMatrix, self.dist, self.rvecs, self.tvecs = cv.calibrateCamera(
+                self.objpoints, self.imgpoints, frameSize, None, None)
 
-    def load_and_display_images(self, folder_path):
-        image_files = self.load_images_from_folder(folder_path)
+        # Save camera calibration matrices to YAML files
+        calibration_data = {
+            'cameraMatrix': self.cameraMatrix,
+            'dist': self.dist,
+            'rvecs': self.rvecs,
+            'tvecs': self.tvecs,
+        }
+        calibration_file = 'camera_calibration.yml'
+        with open(calibration_file, 'w') as outfile:
+            yaml.dump(calibration_data, outfile)
 
-        frame = ctk.CTkFrame(self)
-        frame.pack(fill=ctk.BOTH, expand=True, padx=10, pady=10)
+    def undistortImage(self, inputImagePath, outputImagePath):
+        img = cv.imread(inputImagePath)
+        h, w = img.shape[:2]
+        newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(self.cameraMatrix, self.dist, (w, h), 1, (w, h))
+        dst = cv.undistort(img, self.cameraMatrix, self.dist, None, newCameraMatrix)
+        x, y, w, h = roi
+        dst = dst[y:y + h, x:x + w]
+        cv.imwrite(outputImagePath, dst)
 
-        small_images_frame = ctk.CTkScrollableFrame(frame, label_text="Images")
-        small_images_frame.pack(side=ctk.LEFT, fill=ctk.BOTH, expand=True)
-
-        self.large_image_frame = ctk.CTkFrame(frame)
-        self.large_image_frame.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)
-
-        self.large_img_label = ctk.CTkLabel(self.large_image_frame)
-        self.large_img_label.pack(fill=ctk.BOTH, expand=True)
-
-        for file_name in image_files:
-            image_path = os.path.join(folder_path, file_name)
-
-            img = cv2.imread(image_path)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(img)
-            img.thumbnail((100, 100))
-            img = ImageTk.PhotoImage(img)
-
-            label = ctk.CTkLabel(small_images_frame, image=img, text=file_name, compound=ctk.TOP)
-            label.image = img
-
-            label.bind("<Button-1>", lambda event, img_path=image_path: self.display_large_image(img_path))
-
-            label.pack(padx=10, pady=10, side=ctk.TOP, anchor=ctk.N)
-
+    def calculateReprojectionError(self):
+        mean_error = 0
+        for i in range(len(self.objpoints)):
+            imgpoints2, _ = cv.projectPoints(self.objpoints[i], self.rvecs[i], self.tvecs[i], self.cameraMatrix, self.dist)
+            error = cv.norm(self.imgpoints[i], imgpoints2, cv.NORM_L2)/len(imgpoints2)
+            mean_error += error
+        return mean_error / len(self.objpoints)
 if __name__ == "__main__":
-    folder_path = "/home/kia/CalibrationHub/calibration"
-    app = ImageViewerApp(folder_path)
-    app.mainloop()
+    chessboardSize = (24, 17)
+    frameSize = (1440, 1080)
+    imageFolderPath = '/home/kia/CalibrationHub/calibration'
 
+    calibration = CameraCalibration(chessboardSize, imageFolderPath, useFisheye=False)
+    calibration.findChessboardCorners()
+    calibration.calibrateCamera(frameSize)
 
+    reprojection_error = calibration.calculateReprojectionError()
+    print("Total reprojection error: {}".format(reprojection_error))
+
+    # Create an "undistorted" folder to save the undistorted images
+    undistorted_folder = 'undistorted'
+    os.makedirs(undistorted_folder, exist_ok=True)
+
+    # Loop through all images in the folder and undistort them
+    images = glob.glob(os.path.join(imageFolderPath, '*.png'))
+    for image_path in images:
+        filename = os.path.basename(image_path)
+        output_image_path = os.path.join(undistorted_folder, filename)
+        calibration.undistortImage(image_path, output_image_path)
