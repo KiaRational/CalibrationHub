@@ -51,7 +51,7 @@ Follow the instructions above to load images and perform camera calibration.
 ## Dependencies
 
   tkinter: GUI library for creating the graphical user interface.
-  customtkinter 
+  customtkinter : GUI custom library.
   numpy: Library for numerical computations.
   OpenCV (cv2): Open-source computer vision library for image processing and calibration.
   matplotlib: Library for creating data visualizations.
