@@ -2,7 +2,7 @@
 
 The CalibrationHub App is a Python application developed using the customtkinter library and OpenCV for calibrating cameras. It allows you to load a set of images of a chessboard pattern, find the chessboard corners, and calibrate the camera. This calibration can be useful for various computer vision tasks like image rectification and 3D reconstruction. Here's how to use the app and what each part of it does:
 
-Features:
+## Features:
 
 #### Image Loading:
 Click the "Load Images" button to select a folder containing images of a chessboard pattern.
