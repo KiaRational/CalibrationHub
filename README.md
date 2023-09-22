@@ -50,11 +50,11 @@ Follow the instructions above to load images and perform camera calibration.
 ![fig3](https://github.com/KiaRational/CalibrationHub/blob/main/readme/3.png)
 ## Dependencies
 
-  1.tkinter: GUI library for creating the graphical user interface.
-  2.customtkinter : GUI custom library.
-  3.numpy: Library for numerical computations.
-  4.OpenCV (cv2): Open-source computer vision library for image processing and calibration.
-  5.matplotlib: Library for creating data visualizations.
+		  1.tkinter: GUI library for creating the graphical user interface.
+		  2.customtkinter : GUI custom library.
+		  3.numpy: Library for numerical computations.
+		  4.OpenCV (cv2): Open-source computer vision library for image processing and calibration.
+		  5.matplotlib: Library for creating data visualizations.
 
 ## Author
 
