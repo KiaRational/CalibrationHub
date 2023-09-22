@@ -42,12 +42,12 @@ Run the Python file using a Python interpreter (e.g., python camera_calibration_
 Follow the instructions above to load images and perform camera calibration.
 
 1. Click on Load Images button
-![fig1]((https://github.com/KiaRational/CalibrationHub/blob/main/readme/1.png)
+![fig1](https://github.com/KiaRational/CalibrationHub/blob/main/readme/1.png)
 2. Fill the Settings tab based on your situation.
-![fig2]((https://github.com/KiaRational/CalibrationHub/blob/main/readme/2.png)
+![fig2](https://github.com/KiaRational/CalibrationHub/blob/main/readme/2.png)
 3. Select images you want
 4. click on Start Calibration button
-![fig3]((https://github.com/KiaRational/CalibrationHub/blob/main/readme/3.png)
+![fig3](https://github.com/KiaRational/CalibrationHub/blob/main/readme/3.png)
 ## Dependencies
 
 tkinter: GUI library for creating the graphical user interface.
